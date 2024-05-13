@@ -1,0 +1,113 @@
+---
+title: "House Pricing Dataset Analysis"
+output: html_document
+date: "2024-05-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readxl)
+library(dplyr)
+library(rpart)
+library(ggplot2)
+library(car)
+library(Metrics)
+library(ISLR)
+
+#Reading the dataset
+setwd("/Users/thwishaabansal/Desktop")
+Housing = read.csv("Housing.csv", stringsAsFactors = TRUE)
+
+# Exploring the dataset
+str(Housing)
+summary(Housing)
+
+# Mutating the dataset
+Housing = Housing %>% mutate(guestroom_dummy = ifelse(guestroom=="yes", 1,0))
+Housing = Housing %>% mutate(basement_dummy = ifelse(basement=="yes", 1,0))
+Housing = Housing %>% mutate(hotwaterheating_dummy = ifelse(hotwaterheating=="yes", 1,0))
+Housing = Housing %>% mutate(furnishingstatus_dummy = ifelse(furnishingstatus=="yes", 1,0))
+Housing = Housing %>% mutate(prefarea_dummy = ifelse(prefarea=="yes", 1,0))
+Housing = Housing %>% mutate(mainroad_dummy = ifelse(mainroad=="yes", 1,0))
+Housing = Housing %>% mutate(airconditioning_dummy= ifelse(mainroad=="yes", 1,0))
+
+# Exploratory data analysis
+ggplot(Housing, aes(x=bedrooms,)) + geom_bar()
+ggplot(Housing, aes(x=bathrooms,)) + geom_bar()
+ggplot(Housing, aes(x=stories,)) + geom_bar()
+ggplot(Housing, aes(x=parking,)) + geom_bar()
+ggplot(Housing, aes(x=furnishingstatus_dummy,)) + geom_bar()
+ggplot(Housing, aes(x=hotwaterheating_dummy,)) + geom_bar()
+
+ggplot(Housing, aes(x=bedrooms, y=price)) + geom_point()
+ggplot(Housing, aes(x=bathrooms, y=price)) + geom_point()
+ggplot(Housing, aes(x=area, y=price)) + geom_point()
+ggplot(Housing, aes(x=hotwaterheating_dummy, y=price)) + geom_point()
+
+#Removing outliers
+Housing = Housing %>% 
+  filter(price < quantile(price, 0.99),
+         area < quantile(area, 0.99),
+         bedrooms < quantile(bedrooms, 0.99),
+         bathrooms < quantile(bathrooms, 0.99),
+         stories < quantile(stories, 0.99),
+         parking < quantile(parking, 0.99))
+
+#Creating a train and test dataset
+set.seed(69)
+random_sample <- createDataPartition(Housing$price, p = 0.7, list = FALSE)
+training_dataset  <- Housing[random_sample, ]
+testing_dataset <- Housing[-random_sample, ]
+
+Model1 = lm(price ~ bathrooms + hotwaterheating_dummy + parking, data = training_dataset )
+summary(Model1)
+
+Model2 = lm(price ~ bedrooms + bathrooms, data = training_dataset)
+summary(Model2)
+
+Model3 = lm(price ~ bedrooms + bathrooms + stories, data = training_dataset)
+summary(Model3)
+
+Model4 = lm(price ~ bedrooms + bathrooms + stories + area + parking, data = training_dataset)
+summary(Model4)
+
+Model5 = lm(price ~ bathrooms + stories + area + parking + hotwaterheating_dummy + airconditioning_dummy + prefarea_dummy + mainroad_dummy , data = training_dataset)
+summary(Model5)
+
+Model6 = lm(price ~ bathrooms + stories + area + parking+ prefarea_dummy + mainroad_dummy + hotwaterheating_dummy , data = training_dataset)
+summary(Model6)
+
+par(mfrow=c(2,2))
+plot(Model6,1)
+plot(Model6,2)
+plot(Model6,3)
+
+#Creating a regression tree
+
+# Split data into 80% training and 20% testing
+set.seed(69)
+index <- createDataPartition(Housing$price, p = 0.7, list = FALSE)
+training_data1 <- Housing[index, ]
+testing_data1 <- Housing[-index, ]
+
+#Regression tree model
+RG_1 <- rpart(price ~ bathrooms + stories + area + parking + mainroad_dummy , data = training_data1, method = "anova", minsplit = 5, xval = 0)
+rpart.plot(RG_1)
+summary(RG_1)
+
+RG_2 <- rpart(price ~ bedrooms + bathrooms, data = training_data1, method = "anova", minsplit = 5, xval = 0)
+rpart.plot(RG_2)
+summary(RG_2)
+
+RG_4 <- rpart(price ~ bedrooms +  basement_dummy + stories + area, data = training_data1, method = "anova", minsplit = 5, xval = 0)
+rpart.plot(RG_4)
+summary(RG_4)
+
+RG_7 <- rpart(price ~ bathrooms + stories + area + parking+ prefarea_dummy + mainroad_dummy, data = training_data1, method = "anova", minsplit = 5, xval = 0)
+rpart.plot(RG_7)
+summary(RG_7)
+
+RG_8 <- rpart(price ~ bathrooms + stories + area + parking + prefarea_dummy + mainroad_dummy + hotwaterheating_dummy, data = training_data1, method = "anova", minsplit = 5, xval = 0)
+rpart.plot(RG_8)
+summary(RG_8)
